@@ -1,13 +1,17 @@
 import os
 import pandas as pd
+
+prev_idle = 0
+prev_total = 0
 """"
 fetch the cpu usage data from proc file which will 
 include all the neccesary data with respect to comnsumed 
 OS data
 """
 def read_cpu_usage()->int:
-    prev_idle = 0
-    prev_total = 0
+    
+    global prev_idle,  prev_total
+   
     with open("/proc/stat" , "r") as f:
         data = [int(i) for i in f.readline().split()[1:]]
         
@@ -15,15 +19,15 @@ def read_cpu_usage()->int:
     total = sum(data)
     
     idle_delta = idle - prev_idle
-    total_delta = total = prev_total
+    total_delta = total - prev_total
     
     prev_idle =idle
-    total_delta = total
+    prev_total = total
     
     if total_delta == 0:
         return 0
     
-    cpu_usage =  ( 1 - idle/total)*100
+    cpu_usage =  ( 1 - idle_delta/total_delta)*100
     
     return round(cpu_usage , 2)
     
@@ -33,7 +37,10 @@ def read_temp():
     file_path = "/mnt/c/read_temp/temperature.CSV"
     
     df = pd.read_csv(file_path , encoding= 'latin1')
-    return df["Core Temperatures (avg) [°C]"].iloc[-1]
+    #convert column to numeric string becomes None
+    temp_value = pd.to_numeric(df["Core Temperatures (avg) [°C]"] , errors = "coerce" )
+    #return the last row value where numeric value is found
+    return temp_value.dropna().iloc[-1]
     
     
 def read_mem_info():
@@ -45,6 +52,10 @@ def read_mem_info():
         
         available = memory["MemAvailable"]
         total = memory["MemTotal"]
+        
+        if total == 0:
+            return 0.0
+            
         
         used = total - available
 
